@@ -279,7 +279,7 @@ if(!params.bwa_index && fasta){
         file fasta from fasta
 
         output:
-        file "BWAIndex" into bwa_index
+        file "${fasta}*" into bwa_index
 
         script:
         """
@@ -365,7 +365,8 @@ process bwa {
 
     input:
     file reads from trimmed_reads
-    file index from bwa_index.first()
+    file index from bwa_index
+    file fasta from fasta
 
     output:
     file '*.bam' into bwa_bam
@@ -374,7 +375,7 @@ process bwa {
     prefix = reads[0].toString() - ~/(.R1)?(_1)?(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
     filtering = params.allow_multi_align ? '' : "| samtools view -b -q 1 -F 4 -F 256"
     """
-    bwa mem -M ${index}/genome.fa $reads | samtools view -bT $index - $filtering > ${prefix}.bam
+    bwa mem -M $fasta $reads | samtools view -bT $fasta - $filtering > ${prefix}.bam
     """
 }
 
@@ -966,7 +967,7 @@ workflow.onComplete {
     }
 
     // Switch the embedded MIME images with base64 encoded src
-    ngichipseqlogo = new File("$baseDir/assets/nf-core/ChIPseq_logo.png").bytes.encodeBase64().toString()
+    ngichipseqlogo = new File("$baseDir/assets/NGI-ChIPseq_logo.png").bytes.encodeBase64().toString()
     scilifelablogo = new File("$baseDir/assets/SciLifeLab_logo.png").bytes.encodeBase64().toString()
     ngilogo = new File("$baseDir/assets/NGI_logo.png").bytes.encodeBase64().toString()
     email_html = email_html.replaceAll(~/cid:ngichipseqlogo/, "data:image/png;base64,$ngichipseqlogo")
