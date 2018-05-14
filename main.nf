@@ -55,6 +55,7 @@ def helpMessage() {
       --saturation                  Run saturation analysis by peak calling with subsets of reads
       --broad                       Run MACS with the --broad flag
       --blacklist_filtering         Filter ENCODE blacklisted regions from ChIP-seq peaks. It only works when --genome is set as GRCh37 or GRCm38
+      --geffective					effective genome size. Mandatory when --fasta.
 
     Presets:
       --extendReadsLen [int]        Number of base pairs to extend the reads for the deepTools analysis. Default: 100
@@ -106,6 +107,7 @@ params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : 
 params.bwa_index = params.genome ? params.genomes[ params.genome ].bwa ?: false : false
 params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
+params.geffective = false
 
 // R library locations
 params.rlocation = false
@@ -184,10 +186,11 @@ def REF_macs = false
 def REF_ngsplot = false
 if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
 else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
-else if (params.genome == false){
-    log.warn "No reference supplied for MACS, ngs_plot and annotation. Use '--genome GRCh37' or '--genome GRCm38' to run MACS, ngs_plot and annotation."
+else if (params.fasta != false & params.geffective != false){
+    REF_macs= params.geffective
+    // log.warn "No reference supplied for MACS, ngs_plot and annotation. Use '--genome GRCh37' or '--genome GRCm38' to run MACS, ngs_plot and annotation."
 } else {
-    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38)."
+    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta) and genome effective size (--geffective) must be supplied."
 }
 
 
