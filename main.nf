@@ -734,7 +734,7 @@ process macs {
         -f BAM \\
         -g $REF_macs \\
         -n $analysis_id \\
-        -q 0.01 \\
+        -q 0.1 \\
         --nomodel \\
         --extsize 147
     """
