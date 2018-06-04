@@ -497,7 +497,7 @@ process countstat {
     publishDir "${params.outdir}/countstat", mode: 'copy'
 
     input:
-    file input from bed_total.mix(bed_dedup).toSortedList()
+    file input from bed_total.mix(bed_total).toSortedList()
 
     output:
     file 'read_count_statistics.txt' into countstat_results
@@ -725,11 +725,11 @@ process macs {
     when: REF_macs
 
     script:
-    def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.dedup.sorted.bam"
+    def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
     broad = params.broad ? "--broad" : ''
     """
     macs2 callpeak \\
-        -t ${chip_sample_id}.dedup.sorted.bam \\
+        -t ${chip_sample_id}.sorted.bam \\
         $ctrl \\
         $broad \\
         -f BAM \\
@@ -763,12 +763,12 @@ if (params.saturation) {
      when: REF_macs
 
      script:
-     def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.dedup.sorted.bam"
+     def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
      broad = params.broad ? "--broad" : ''
      """
-     samtools view -b -s ${sampling} ${chip_sample_id}.dedup.sorted.bam > ${chip_sample_id}.${sampling}.dedup.sorted.bam
+     samtools view -b -s ${sampling} ${chip_sample_id}.sorted.bam > ${chip_sample_id}.${sampling}.sorted.bam
      macs2 callpeak \\
-         -t ${chip_sample_id}.${sampling}.dedup.sorted.bam \\
+         -t ${chip_sample_id}.${sampling}.sorted.bam \\
          $ctrl \\
          $broad \\
          -f BAM \\
