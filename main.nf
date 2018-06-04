@@ -441,8 +441,8 @@ process bwa_mapped {
 /*
  * STEP 4 Picard
  */
-
-process picard {
+/* Comment duplicated reads removal*/
+/*process picard {
     tag "$prefix"
     publishDir "${params.outdir}/picard", mode: 'copy'
 
@@ -486,6 +486,7 @@ process picard {
     """
 }
 
+*/
 
 /*
  * STEP 5 Read_count_statistics
@@ -518,7 +519,7 @@ process phantompeakqualtools {
                 saveAs: {filename -> filename.indexOf(".out") > 0 ? "logs/$filename" : "$filename"}
 
     input:
-    file bam from bam_dedup_spp
+    file bam from bam_picard
 
     output:
     file '*.pdf' into spp_results
@@ -564,8 +565,8 @@ process deepTools {
     publishDir "${params.outdir}/deepTools", mode: 'copy'
 
     input:
-    file bam from bam_dedup_deepTools.collect()
-    file bai from bai_dedup_deepTools.collect()
+    file bam from bam_picard.collect()
+    file bai from bai_for_mapped.collect()
 
     output:
     file '*.{txt,pdf,png,npz,bw}' into deepTools_results
@@ -674,8 +675,8 @@ process ngsplot {
     publishDir "${params.outdir}/ngsplot", mode: 'copy'
 
     input:
-    file input_bam_files from bam_dedup_ngsplot.collect()
-    file input_bai_files from bai_dedup_ngsplot.collect()
+    file input_bam_files from bam_picard.collect()
+    file input_bai_files from bai_for_mapped.collect()
 
     output:
     file '*.pdf' into ngsplot_results
@@ -713,8 +714,8 @@ process macs {
     publishDir "${params.outdir}/macs", mode: 'copy'
 
     input:
-    file bam_for_macs from bam_dedup_macs.collect()
-    file bai_for_macs from bai_dedup_macs.collect()
+    file bam_for_macs from bam_picard.collect()
+    file bai_for_macs from bai_for_mapped.collect()
     set chip_sample_id, ctrl_sample_id, analysis_id from macs_para
 
     output:
@@ -751,8 +752,8 @@ if (params.saturation) {
      publishDir "${params.outdir}/macs/saturation", mode: 'copy'
 
      input:
-     file bam_for_saturation from bam_dedup_saturation.collect()
-     file bai_for_saturation from bai_dedup_saturation.collect()
+     file bam_for_saturation from bam_picard.collect()
+     file bai_for_saturation from bai_for_mapped.collect()
      set chip_sample_id, ctrl_sample_id, analysis_id from saturation_para
      each sampling from 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 
