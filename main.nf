@@ -399,8 +399,8 @@ process samtools {
     file bam from bwa_bam
 
     output:
-    file '*.sorted.bam' into bam_picard, bam_for_mapped
-    file '*.sorted.bam.bai' into bwa_bai, bai_for_mapped
+    file '*.sorted.bam' into bam_for_mapped, bam_spp, bam_ngsplot, bam_deepTools, bam_macs, bam_ded
+    file '*.sorted.bam.bai' into bwa_bai, bai_for_mapped, bai_deepTools, bai_ngsplot, bai_macs, bai_saturation
     file '*.sorted.bed' into bed_total
     file '*.stats.txt' into samtools_stats
 
@@ -497,7 +497,7 @@ process countstat {
     publishDir "${params.outdir}/countstat", mode: 'copy'
 
     input:
-    file input from bed_total.mix(bed_total).toSortedList()
+    file input from bed_total.toSortedList()
 
     output:
     file 'read_count_statistics.txt' into countstat_results
@@ -519,7 +519,7 @@ process phantompeakqualtools {
                 saveAs: {filename -> filename.indexOf(".out") > 0 ? "logs/$filename" : "$filename"}
 
     input:
-    file bam from bam_picard
+    file bam from bam_spp
 
     output:
     file '*.pdf' into spp_results
@@ -565,8 +565,8 @@ process deepTools {
     publishDir "${params.outdir}/deepTools", mode: 'copy'
 
     input:
-    file bam from bam_picard.collect()
-    file bai from bai_for_mapped.collect()
+    file bam from bam_deepTools.collect()
+    file bai from bai_deepTools.collect()
 
     output:
     file '*.{txt,pdf,png,npz,bw}' into deepTools_results
@@ -675,8 +675,8 @@ process ngsplot {
     publishDir "${params.outdir}/ngsplot", mode: 'copy'
 
     input:
-    file input_bam_files from bam_picard.collect()
-    file input_bai_files from bai_for_mapped.collect()
+    file input_bam_files from bam_ngsplot.collect()
+    file input_bai_files from bai_ngsplot.collect()
 
     output:
     file '*.pdf' into ngsplot_results
@@ -714,8 +714,8 @@ process macs {
     publishDir "${params.outdir}/macs", mode: 'copy'
 
     input:
-    file bam_for_macs from bam_picard.collect()
-    file bai_for_macs from bai_for_mapped.collect()
+    file bam_for_macs from bam_macs.collect()
+    file bai_for_macs from bai_macs.collect()
     set chip_sample_id, ctrl_sample_id, analysis_id from macs_para
 
     output:
@@ -752,8 +752,8 @@ if (params.saturation) {
      publishDir "${params.outdir}/macs/saturation", mode: 'copy'
 
      input:
-     file bam_for_saturation from bam_picard.collect()
-     file bai_for_saturation from bai_for_mapped.collect()
+     file bam_for_saturation from bam_for_saturation.collect()
+     file bai_for_saturation from bai_for_saturation.collect()
      set chip_sample_id, ctrl_sample_id, analysis_id from saturation_para
      each sampling from 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 
