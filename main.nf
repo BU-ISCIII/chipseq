@@ -186,8 +186,9 @@ def REF_macs = false
 def REF_ngsplot = false
 if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
 else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
-else if (params.fasta != false & params.geffective != false){
+else if (params.fasta != false & params.geffective != false & params.gtf != false){
     REF_macs= params.geffective
+    REF_ngsplot = params.gtf
     // log.warn "No reference supplied for MACS, ngs_plot and annotation. Use '--genome GRCh37' or '--genome GRCm38' to run MACS, ngs_plot and annotation."
 } else {
     log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta) and genome effective size (--geffective) must be supplied."
@@ -565,7 +566,7 @@ process deepTools {
     publishDir "${params.outdir}/deepTools", mode: 'copy'
 
     input:
-    file bam from bam_deepTools.collect()
+  */  file bam from bam_deepTools.collect()
     file bai from bai_deepTools.collect()
 
     output:
@@ -804,7 +805,7 @@ if (params.saturation) {
  * STEP 10 Post peak calling processing
  */
 
-process chippeakanno {
+/*process chippeakanno {
     tag "${macs_peaks_collection[0].baseName}"
     publishDir "${params.outdir}/macs/chippeakanno", mode: 'copy'
 
@@ -822,7 +823,7 @@ process chippeakanno {
     """
     post_peak_calling_processing.r $params.rlocation $REF_macs $filtering $gtf $macs_peaks_collection
     """
-}
+}*/
 
 /*
  * Parse software version numbers
