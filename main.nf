@@ -566,7 +566,7 @@ process deepTools {
     publishDir "${params.outdir}/deepTools", mode: 'copy'
 
     input:
-  */  file bam from bam_deepTools.collect()
+    file bam from bam_deepTools.collect()
     file bai from bai_deepTools.collect()
 
     output:
