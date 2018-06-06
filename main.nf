@@ -188,7 +188,7 @@ if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
 else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
 else if (params.fasta != false & params.geffective != false & params.gtf != false){
     REF_macs= params.geffective
-    REF_ngsplot = params.gtf
+    //REF_ngsplot = params.gtf
     // log.warn "No reference supplied for MACS, ngs_plot and annotation. Use '--genome GRCh37' or '--genome GRCm38' to run MACS, ngs_plot and annotation."
 } else {
     log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta) and genome effective size (--geffective) must be supplied."
