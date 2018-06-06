@@ -720,7 +720,7 @@ process macs {
     set chip_sample_id, ctrl_sample_id, analysis_id from macs_para
 
     output:
-    file '*.{bed,r,narrowPeak}' into macs_results
+    file '*.{bed,r,narrowPeak,broadPeak,gappedPeak}' into macs_results
     file '*.xls' into macs_peaks
 
     when: REF_macs
