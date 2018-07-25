@@ -45,9 +45,18 @@ def helpMessage() {
 
     Mandatory arguments:
       --reads                       Path to input data (must be surrounded with quotes).
-      --genome                      Name of iGenomes reference
       --macsconfig                  Configuration file for peaking calling using MACS. Format: ChIPSampleID,CtrlSampleID,AnalysisID
       -profile                      Hardware config to use. uppmax / uppmax_modules / docker / aws
+
+    References
+      --genome						iGenome to be used. Must be configured. (Mandatory)
+      --fasta                       Path to Fasta reference (Mandatory if not --genome supplied)
+      --bwa_index                   Path to BWA index (Mandatory if not --genome supplied)
+      --gtf                         Path to GTF file (Ensembl format) (Mandatory if not --genome supplied)
+      --blacklist                   Path to blacklist regions (.BED format), used for filtering out called peaks. Note that --blacklist_filtering is required
+
+	PeakCallers available:
+	  --peakCaller [str]			Select which peak caller to use. Options: (all|macs|epic|music). Default:macs
 
     Options:
       --singleEnd                   Specifies that the input is single end reads
@@ -56,17 +65,15 @@ def helpMessage() {
       --broad                       Run MACS with the --broad flag
       --blacklist_filtering         Filter ENCODE blacklisted regions from ChIP-seq peaks. It only works when --genome is set as GRCh37 or GRCm38
       --geffective					effective genome size. Mandatory when --fasta.
+      --keepduplicates				Specifying --keepduplicates picardMarkDuplicates will be escaped, and --keepduplicates will be applied to peak callers as a parameter.
+      --qvalue						qvalue for peak output.
+      --macsnomodel					Specifying --macsnomodel macs will not use its internal model for peak calling.
+      --extsize [int]				Mandatory when specifying --macsnomodel, fragment size for abundance estimation.
 
     Presets:
       --extendReadsLen [int]        Number of base pairs to extend the reads for the deepTools analysis. Default: 100
-
-    References
-      --fasta                       Path to Fasta reference
-      --bwa_index                   Path to BWA index
-      --gtf                         Path to GTF file (Ensembl format)
-      --blacklist                   Path to blacklist regions (.BED format), used for filtering out called peaks. Note that --blacklist_filtering is required
-      --saveReference               Save the generated reference files in the Results directory.
-      --saveAlignedIntermediates    Save the intermediate BAM files from the Alignment step  - not done by default
+      --saveReference               Save the generated reference files in the Results directory. Default: false
+      --saveAlignedIntermediates    Save the intermediate BAM files from the Alignment step. Default: false
 
     Trimming options
       --notrim                      Specifying --notrim will skip the adapter trimming step.
@@ -99,54 +106,14 @@ if (params.help){
     exit 0
 }
 
-// Configurable variables
+/*
+ * Default and custom value for configurable variables
+ */
+
+// Variables for SGE/SLURM
 params.name = false
 params.project = false
-params.genome = false
-params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : false
-params.bwa_index = params.genome ? params.genomes[ params.genome ].bwa ?: false : false
-params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
-params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
-params.geffective = false
 
-// R library locations
-params.rlocation = false
-if (params.rlocation){
-    nxtflow_libs = file(params.rlocation)
-    nxtflow_libs.mkdirs()
-}
-
-multiqc_config = file(params.multiqc_config)
-output_docs = file("$baseDir/docs/output.md")
-
-// Custom trimming options
-params.clip_r1 = 0
-params.clip_r2 = 0
-params.three_prime_clip_r1 = 0
-params.three_prime_clip_r2 = 0
-
-// Validate inputs
-macsconfig = file(params.macsconfig)
-if( !macsconfig.exists() ) exit 1, "Missing MACS config: '$macsconfig'. Specify path with --macsconfig"
-if( params.bwa_index ){
-    bwa_index = Channel
-        .fromPath(params.bwa_index)
-        .ifEmpty { exit 1, "BWA index not found: ${params.bwa_index}" }
-} else if ( params.fasta ){
-    fasta = file(params.fasta)
-    if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
-} else {
-    exit 1, "No reference genome specified!"
-}
-gtf = false
-if( params.gtf ){
-    gtf = file(params.gtf)
-    if( !gtf.exists() ) exit 1, "GTF file not found: ${params.gtf}."
-}
-if ( params.blacklist_filtering ){
-    blacklist = file(params.blacklist)
-    if( !blacklist.exists() ) exit 1, "Blacklist file not found: ${params.blacklist}"
-}
 if( workflow.profile == 'standard' && !params.project ) exit 1, "No UPPMAX project ID found! Use --project"
 
 // Has the run name been specified by the user?
@@ -156,18 +123,121 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-/*
- * Create a channel for input read files
- */
+// iGenome
+params.genome = false
+
+// Custom fasta genome
+params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : false
+
+if( params.fasta ){
+    fasta_file = file(params.fasta)
+    if( !fasta_file.exists() ) exit 1, "Fasta file not found: ${params.fasta}."
+}
+
+// bwa index
+params.bwa_index = params.genome ? params.genomes[ params.genome ].bwa ?: false : false
+
+if( params.bwa_index ){
+    bwa_file = file(params.bwa_index)
+    if( !fasta_file.exists() ) exit 1, "BWAIndex file not found: ${params.bwa_index}."
+}
+
+// gtf file
+params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
+
+if( params.gtf ){
+    gtf = file(params.gtf)
+    if( !gtf.exists() ) exit 1, "GTF file not found: ${params.gtf}."
+}
+
+// blacklist file
+params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
+
+if ( params.blacklist_filtering ){
+    blacklist = file(params.blacklist)
+    if( !blacklist.exists() ) exit 1, "Blacklist file not found: ${params.blacklist}"
+}
+
+// genome effective size == % genome mappability
+params.geffective = false
+
+// PeakCallers
+params.peakCaller = "macs"
+
+// KeepDuplicates
+params.keepduplicates = false
+
+// Rlibrarylocation
+params.rlocation = false
+
+if (params.rlocation){
+    nxtflow_libs = file(params.rlocation)
+    nxtflow_libs.mkdirs()
+}
+
+// Following two configured in config.file?
+// MultiQC config file
+multiqc_config = file(params.multiqc_config)
+
+// Output md template location
+output_docs = file("$baseDir/docs/output.md")
+
+// Default trimming options
+params.clip_r1 = 0
+params.clip_r2 = 0
+params.three_prime_clip_r1 = 0
+params.three_prime_clip_r2 = 0
+
+// macsconfig file
+macsconfig = file(params.macsconfig)
+
+// SingleEnd option
 params.singleEnd = false
+
+// qvalue
+params.qvalue = 0.01
+
+// Macs no model and extsize
+params.macsnomodel = false
+
+if (params.macsnomodel){
+	if (!extsize.exists()) exit 1, "Missing extsize, mandatory when macs --nomodel parameter is specified. Use --extsize."
+}
+
+// Validate  mandatory inputs
+//Check macsconfig exists
+if( !macsconfig.exists() ) exit 1, "Missing MACS config: '$macsconfig'. Specify path with --macsconfig"
+
+// Check a config reference genome or a fasta/gtf/geffective is supplied.
+def REF_macs = false
+def REF_ngsplot = false
+if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
+else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
+else if (params.fasta != false & params.geffective != false & params.gtf != false){
+    REF_macs= params.geffective
+    log.warn "NGSplot is only available for hg19 and mm10 genomes at the moment."
+} else {
+    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta), genome effective size (--geffective) and gtp annotation file (--gtf) must be supplied."
+}
+
+/*
+ * Create channel for input files
+ */
+
+// Create channel for bwa_index if supplied
+if( params.bwa_index ){
+    bwa_index = Channel
+        .fromPath(params.bwa_index)
+        .ifEmpty { exit 1, "BWA index not found: ${params.bwa_index}" }
+}
+
+// Create channel for input reads.
 Channel
     .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
     .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nIf this is single-end data, please specify --singleEnd on the command line." }
     .into { raw_reads_fastqc; raw_reads_trimgalore }
 
-/*
- * Create a channel for macs config file
- */
+//Create a channel for macs config file
 Channel
     .from(macsconfig.readLines())
     .map { line ->
@@ -178,22 +248,6 @@ Channel
         [ chip_sample_id, ctrl_sample_id, analysis_id ]
     }
     .into{ macs_para; saturation_para }
-
-/*
- * Reference to use for MACS, ngs.plot.r and annotation
- */
-def REF_macs = false
-def REF_ngsplot = false
-if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
-else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
-else if (params.fasta != false & params.geffective != false & params.gtf != false){
-    REF_macs= params.geffective
-    //REF_ngsplot = params.gtf
-    // log.warn "No reference supplied for MACS, ngs_plot and annotation. Use '--genome GRCh37' or '--genome GRCm38' to run MACS, ngs_plot and annotation."
-} else {
-    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta) and genome effective size (--geffective) must be supplied."
-}
-
 
 // Header log info
 log.info "========================================="
@@ -208,7 +262,9 @@ if(params.bwa_index)  summary['BWA Index'] = params.bwa_index
 else if(params.fasta) summary['Fasta Ref'] = params.fasta
 if(params.gtf)  summary['GTF File'] = params.gtf
 summary['Multiple alignments allowed']     = params.allow_multi_align
-summary['MACS Config']         = params.macsconfig
+summary['Keep Duplicates']     = params.keepduplicates
+summary['Peak Caller']         = params.peakCaller
+summary['Cntr/sample Config']         = params.macsconfig
 summary['Saturation analysis'] = params.saturation
 summary['MACS broad peaks']    = params.broad
 summary['Blacklist filtering'] = params.blacklist_filtering
@@ -443,51 +499,64 @@ process bwa_mapped {
  * STEP 4 Picard
  */
 /* Comment duplicated reads removal*/
-/*process picard {
-    tag "$prefix"
-    publishDir "${params.outdir}/picard", mode: 'copy'
 
-    input:
-    file bam from bam_picard
+if (params.keepduplicates){
+	bam_spp = bam_dedup_spp
+	bam_ngsplot = bam_dedup_ngsplot
+	bam_deepTools = bam_dedup_deepTools
+	bam_macs = bam_dedup_macs
+	bam_for_saturation = bam_dedup_saturation
 
-    output:
-    file '*.dedup.sorted.bam' into bam_dedup_spp, bam_dedup_ngsplot, bam_dedup_deepTools, bam_dedup_macs, bam_dedup_saturation
-    file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation
-    file '*.dedup.sorted.bed' into bed_dedup
-    file '*.picardDupMetrics.txt' into picard_reports
+	bai_spp = bai_dedup_spp
+	bai_ngsplot = bai_dedup_ngsplot
+	bai_deepTools = bai_dedup_deepTools
+	bai_macs = bai_dedup_macs
+	bai_for_saturation = bai_dedup_saturation
 
-    script:
-    prefix = bam[0].toString() - ~/(\.sorted)?(\.bam)?$/
-    if( task.memory == null ){
-        log.warn "[Picard MarkDuplicates] Available memory not known - defaulting to 6GB ($prefix)"
-        avail_mem = 6000
-    } else {
-        avail_mem = task.memory.toMega()
-        if( avail_mem <= 0){
-            avail_mem = 6000
-            log.warn "[Picard MarkDuplicates] Available memory 0 - defaulting to 6GB ($prefix)"
-        } else if( avail_mem < 250){
-            avail_mem = 250
-            log.warn "[Picard MarkDuplicates] Available memory under 250MB - defaulting to 250MB ($prefix)"
-        }
-    }
-    """
-    java -Xmx${avail_mem}m -jar \$PICARD_HOME/picard.jar MarkDuplicates \\
-        INPUT=$bam \\
-        OUTPUT=${prefix}.dedup.bam \\
-        ASSUME_SORTED=true \\
-        REMOVE_DUPLICATES=true \\
-        METRICS_FILE=${prefix}.picardDupMetrics.txt \\
-        VALIDATION_STRINGENCY=LENIENT \\
-        PROGRAM_RECORD_ID='null'
+	process picard {
+		tag "$prefix"
+		publishDir "${params.outdir}/picard", mode: 'copy'
 
-    samtools sort ${prefix}.dedup.bam -o ${prefix}.dedup.sorted.bam
-    samtools index ${prefix}.dedup.sorted.bam
-    bedtools bamtobed -i ${prefix}.dedup.sorted.bam | sort -k 1,1 -k 2,2n -k 3,3n -k 6,6 > ${prefix}.dedup.sorted.bed
-    """
+		input:
+		file bam from bam_picard
+
+		output:
+		file '*.dedup.sorted.bam' into bam_dedup_spp, bam_dedup_ngsplot, bam_dedup_deepTools, bam_dedup_macs, bam_dedup_saturation
+		file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation
+		file '*.dedup.sorted.bed' into bed_dedup
+		file '*.picardDupMetrics.txt' into picard_reports
+
+		script:
+		prefix = bam[0].toString() - ~/(\.sorted)?(\.bam)?$/
+		if( task.memory == null ){
+			log.warn "[Picard MarkDuplicates] Available memory not known - defaulting to 6GB ($prefix)"
+			avail_mem = 6000
+		} else {
+			avail_mem = task.memory.toMega()
+			if( avail_mem <= 0){
+				avail_mem = 6000
+				log.warn "[Picard MarkDuplicates] Available memory 0 - defaulting to 6GB ($prefix)"
+			} else if( avail_mem < 250){
+				avail_mem = 250
+				log.warn "[Picard MarkDuplicates] Available memory under 250MB - defaulting to 250MB ($prefix)"
+			}
+		}
+		"""
+		java -Xmx${avail_mem}m -jar \$PICARD_HOME/picard.jar MarkDuplicates \\
+			INPUT=$bam \\
+			OUTPUT=${prefix}.dedup.bam \\
+			ASSUME_SORTED=true \\
+			REMOVE_DUPLICATES=true \\
+			METRICS_FILE=${prefix}.picardDupMetrics.txt \\
+			VALIDATION_STRINGENCY=LENIENT \\
+			PROGRAM_RECORD_ID='null'
+
+		samtools sort ${prefix}.dedup.bam -o ${prefix}.dedup.sorted.bam
+		samtools index ${prefix}.dedup.sorted.bam
+		bedtools bamtobed -i ${prefix}.dedup.sorted.bam | sort -k 1,1 -k 2,2n -k 3,3n -k 6,6 > ${prefix}.dedup.sorted.bed
+		"""
+	}
 }
-
-*/
 
 /*
  * STEP 5 Read_count_statistics
@@ -723,22 +792,27 @@ process macs {
     file '*.{bed,r,narrowPeak,broadPeak,gappedPeak}' into macs_results
     file '*.xls' into macs_peaks
 
-    when: REF_macs
+    when: REF_macs && params.peakCaller =~ "/(all|macs)/"
 
     script:
     def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
     broad = params.broad ? "--broad" : ''
+    keepduplicates = params.keepduplicates ? '--keep-dup all' : ''
+    nomodel = params.macsnomodel ? '--nomodel' : ''
+    extsize = params.extsize ? "--extsize ${params.extsize}" : ''
+
     """
     macs2 callpeak \\
         -t ${chip_sample_id}.sorted.bam \\
         $ctrl \\
         $broad \\
+        $keepduplicates \\
         -f BAM \\
         -g $REF_macs \\
         -n $analysis_id \\
-        -q 0.9 \\
-        --nomodel \\
-        --extsize 147
+        -q $qvalue \\
+        $nomodel \\
+        $extsize
     """
 }
 
