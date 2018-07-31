@@ -2,7 +2,7 @@ Bootstrap: docker
 From: centos:latest
 
 %help
-	This is a container using Centos:6.9 base image from DockerHub. It includes software needed for Chipseq-nf pipeline(https://github.com/BU-ISCIII/chipseq-nf).
+	This is a container using Centos:7 base image from DockerHub. It includes software needed for Chipseq-nf pipeline(https://github.com/BU-ISCIII/chipseq-nf).
 
 %labels
 	Maintainer BU-ISCIII
@@ -11,16 +11,15 @@ From: centos:latest
 	Version 1.0
 
 %files
-ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
+ngsplotdb_hg19_75_3.00.tar.gz /opt
 ngsplotdb_mm10_75_3.00.tar.gz /opt
 ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 
 %environment
 
-	FASTQC_BIN="fastqc_v0.11.5.zip"
+	FASTQC_VERSION="fastqc_v0.11.5.zip"
 	BWA_VERSION="0.7.15"
 	CUTADAPT_VERSION="1.16"
-	BWA_VERSION="0.7.15"
     SAMTOOLS_VERSION="1.6"
 	PICARD_VERSION="2.0.1"
 	BEDTOOLS_VERSION="2.26.0"
@@ -110,12 +109,12 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	yum -y install java-1.8.0-openjdk.x86_64
 
 	echo "Install FastQC"
-	FASTQC_BIN="fastqc_v0.11.5.zip"
+	FASTQC_VERSION="0.11.5"
 
-	curl -fsSL http://www.bioinformatics.babraham.ac.uk/projects/fastqc/$FASTQC_BIN -o /opt/$FASTQC_BIN && \
-	unzip /opt/$FASTQC_BIN -d /opt/ && \
+	curl -fsSL http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v${FASTQC_VERSION}.zip -o /opt/fastqc_v${FASTQC_VERSION}.zip && \
+	unzip /opt/fastqc_v${FASTQC_VERSION}.zip -d /opt/ && \
 	chmod 755 /opt/FastQC/fastqc && \
-	rm /opt/$FASTQC_BIN
+	rm /opt/fastqc_v${FASTQC_VERSION}.zip
 	echo 'export PATH=${PATH}:/opt/FastQC' >> $SINGULARITY_ENVIRONMENT
 	export PATH=${PATH}:/opt/FastQC
 
@@ -128,7 +127,7 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 
 	curl -fsSL https://downloads.sourceforge.net/project/bio-bwa/bwa-${BWA_VERSION}.tar.bz2 -o /opt/bwa-${BWA_VERSION}.tar.bz2 && \
     tar xvjf /opt/bwa-${BWA_VERSION}.tar.bz2 -C /opt/ && \
-    cd /opt/bwa-${BWA_VERSION};make && \
+    cd /opt/bwa-${BWA_VERSION};make;cd - && \
     rm /opt/bwa-${BWA_VERSION}.tar.bz2
 
     echo 'export PATH=${PATH}:/opt/bwa-${BWA_VERSION}' >> $SINGULARITY_ENVIRONMENT
@@ -146,15 +145,17 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	export PATH=${PATH}:/opt/samtools-${SAMTOOLS_VERSION}:/opt/samtools-${SAMTOOLS_VERSION}/bin
 
 	# Install PicardTools
+	echo "Install PicardTools"
 	PICARD_VERSION="2.0.1"
 	curl -fsSL https://github.com/broadinstitute/picard/releases/download/${PICARD_VERSION}/picard-tools-${PICARD_VERSION}.zip -o /opt/picard-tools-${PICARD_VERSION}.zip && \
 	unzip /opt/picard-tools-${PICARD_VERSION}.zip -d /opt/ && \
 	rm /opt/picard-tools-${PICARD_VERSION}.zip
 
-	echo 'export PICARD_HOME=/opt/${PICARD_VERSION}' >> $SINGULARITY_ENVIRONMENT
-	export PICARD_HOME=/opt/${PICARD_VERSION}
+	echo 'export PICARD_HOME=/opt/picard-tools-${PICARD_VERSION}' >> $SINGULARITY_ENVIRONMENT
+	export PICARD_HOME=/opt/picard-tools-${PICARD_VERSION}
 
 	# Install BEDTools
+	echo "Install Bedtools"
 	BEDTOOLS_VERSION="2.26.0"
 	curl -fsSL https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz -o /opt/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
 	tar xvzf /opt/bedtools-${BEDTOOLS_VERSION}.tar.gz -C /opt/ && \
@@ -165,10 +166,11 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	export PATH=${PATH}:/opt/bedtools2/bin
 
 	# Install R
+	echo "Install R and R packages"
 	R_VERSION="R-3.4.2"
 	curl -fsSL https://cran.r-project.org/src/base/R-3/${R_VERSION}.tar.gz -o /opt/${R_VERSION}.tar.gz && \
 	tar xvzf /opt/${R_VERSION}.tar.gz -C /opt/ && \
-	cd /opt/${R_VERSION};./configure;make;make install && \
+	cd /opt/${R_VERSION};./configure;make;make install;cd - && \
 	rm /opt/${R_VERSION}.tar.gz
 
 	# Install core R dependencies
@@ -191,6 +193,7 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	Rscript /opt/packages.r
 
 	# Install phantompeakqualtools
+	echo "Install PHANTOMPEAKQUALTOOLS"
 	SPP_VERSION="1.15"
 	PHANTOMPEAKQUALTOOLS_VERSION="v.1.1"
 	curl -fsSL https://github.com/hms-dbmi/spp/archive/${SPP_VERSION}.tar.gz -o /opt/SPP_${SPP_VERSION}.tar.gz && \
@@ -199,13 +202,14 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	curl -fsSL https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/phantompeakqualtools/ccQualityControl.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz -o /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz && \
 	tar xvzf /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz -C /opt/ && \
 	chmod 755 /opt/phantompeakqualtools/* && \
-	echo 'alias run_spp.R="Rscript /opt/phantompeakqualtools/run_spp.R"' >> ~/.bashrc && \
+	echo 'alias run_spp.R="Rscript /opt/phantompeakqualtools/run_spp.R"' >> /etc/bashrc && \
 	rm /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz
 
 	echo 'export PATH=${PATH}:/opt/phantompeakqualtools' >> $SINGULARITY_ENVIRONMENT
 	export PATH=${PATH}:/opt/phantompeakqualtools
 
 	# Install DeepTools
+	echo "Install DeepTools"
 	DEEPTOOLS_VERSION="2.5.4"
 	pip3 install matplotlib numpydoc py2bit pyBigWig pysam scipy
 	cd /opt && \
@@ -213,27 +217,33 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	cd deepTools; python3 setup.py install; cd /
 
 	# Install ngsplot
+	echo "Install ngsplot"
 	NGSPLOT_VERSION="2.63"
 	curl -fsSL https://github.com/shenlab-sinai/ngsplot/archive/${NGSPLOT_VERSION}.tar.gz -o /opt/ngsplot_${NGSPLOT_VERSION}.tar.gz && \
 	tar xvzf /opt/ngsplot_${NGSPLOT_VERSION}.tar.gz -C /opt/ && \
 	rm /opt/ngsplot_${NGSPLOT_VERSION}.tar.gz
+
+	export NGSPLOT=/opt/ngsplot-${NGSPLOT_VERSION}
+	echo 'export NGSPLOT=/opt/ngsplot-${NGSPLOT_VERSION}' >> $SINGULARITY_ENVIRONMENT
 	export PATH=${PATH}:/opt/ngsplot-${NGSPLOT_VERSION}/bin
 	echo 'export PATH=${PATH}:/opt/ngsplot-${NGSPLOT_VERSION}/bin' >> $SINGULARITY_ENVIRONMENT
 
-	NGSPLOT=/opt/ngsplot-${NGSPLOT_VERSION}/
-	echo y | python2.7 /opt/ngsplot/bin/ngsplotdb.py install /opt/ngsplotdb_mm10_75_3.00.tar.gz && \
-	echo y | python2.7 /opt/ngsplot/bin/ngsplotdb.py install /opt/ngsplotdb_hg19_75_3.00.tar.gz && \
-	echo y | python2.7 /opt/ngsplot/bin/ngsplotdb.py install /opt/ngsplotdb_StrepPneumo1_40_3.00.tar.gz && \
+	echo "Install NGSPLOT databases"
+	echo y | python /opt/ngsplot-${NGSPLOT_VERSION}/bin/ngsplotdb.py install /opt/ngsplotdb_mm10_75_3.00.tar.gz && \
+	echo y | python /opt/ngsplot-${NGSPLOT_VERSION}/bin/ngsplotdb.py install /opt/ngsplotdb_hg19_75_3.00.tar.gz && \
+	echo y | python /opt/ngsplot-${NGSPLOT_VERSION}/bin/ngsplotdb.py install /opt/ngsplotdb_StrepPneumo1_40_3.00.tar.gz && \
 	rm /opt/ngsplotdb_hg19_75_3.00.tar.gz && \
 	rm /opt/ngsplotdb_mm10_75_3.00.tar.gz && \
 	rm /opt/ngsplotdb_StrepPneumo1_40_3.00.tar.gz
 
 	# Install MACS
+	echo "Install MACS peak caller"
 	MACS_VERSION="2.1.1.20160309"
 	pip install Numpy
 	pip install MACS2==${MACS_VERSION}
 
 	# Install MUSIC
+	echo "Install MUSIC peak caller"
 	curl -fsSL https://github.com/gersteinlab/MUSIC/archive/master.zip -o /opt/MUSIC.zip && \
 	unzip /opt/MUSIC.zip -d /opt/; rm /opt/MUSIC.zip; cd /opt/MUSIC-master && \
 	make clean;make;cd -
@@ -242,9 +252,11 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	export PATH=${PATH}:/opt/MUSIC-master/bin
 
 	# Install epic
+	echo "Install epic peak caller"
 	EPIC_VERSION="0.2.9"
 	pip3 install bioepic==${EPIC_VERSION}
 
 	# Install MultiQC
+	echo "Install MultiQC"
 	MULTIQC_VERSION="1.4"
 	pip3 install multiqc==${MULTIQC_VERSION}
