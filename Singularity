@@ -18,6 +18,7 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 %environment
 
 	FASTQC_VERSION="fastqc_v0.11.5.zip"
+	TRIMGALORE_VERSION="0.4.5"
 	BWA_VERSION="0.7.15"
 	CUTADAPT_VERSION="1.16"
     SAMTOOLS_VERSION="1.6"
@@ -121,6 +122,15 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	echo "Install cutadapt"
 	CUTADAPT_VERSION="1.16"
 	pip3 install cutadapt==${CUTADAPT_VERSION}
+
+	# Install TrimGalore
+	TRIMGALORE_VERSION="0.4.5"
+	curl -fsSL https://github.com/FelixKrueger/TrimGalore/archive/${TRIMGALORE_VERSION}.tar.gz -o /opt/trimgalore_${TRIMGALORE_VERSION}.tar.gz && \
+    tar xvzf /opt/trimgalore_${TRIMGALORE_VERSION}.tar.gz -C /opt/ && \
+    rm /opt/trimgalore_${TRIMGALORE_VERSION}.tar.gz
+
+	echo 'export PATH=${PATH}:/opt/trimgalore_${TRIMGALORE_VERSION}' >> $SINGULARITY_ENVIRONMENT
+	export PATH=${PATH}:/opt/trimgalor_${TRIMGALORE_VERSION}
 
 	echo "Install BWA"
 	BWA_VERSION="0.7.15"
