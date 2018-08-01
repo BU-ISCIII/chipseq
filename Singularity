@@ -129,8 +129,8 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
     tar xvzf /opt/trimgalore_${TRIMGALORE_VERSION}.tar.gz -C /opt/ && \
     rm /opt/trimgalore_${TRIMGALORE_VERSION}.tar.gz
 
-	echo 'export PATH=${PATH}:/opt/trimgalore_${TRIMGALORE_VERSION}' >> $SINGULARITY_ENVIRONMENT
-	export PATH=${PATH}:/opt/trimgalor_${TRIMGALORE_VERSION}
+	echo 'export PATH=${PATH}:/opt/TrimGalore-${TRIMGALORE_VERSION}' >> $SINGULARITY_ENVIRONMENT
+	export PATH=${PATH}:/opt/TrimGalore_${TRIMGALORE_VERSION}
 
 	echo "Install BWA"
 	BWA_VERSION="0.7.15"
