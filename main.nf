@@ -336,7 +336,7 @@ if(!params.bwa_index && fasta){
                    saveAs: { params.saveReference ? it : null }, mode: 'copy'
 
         input:
-        file fasta from fasta
+        file fasta from fasta_file
 
         output:
         file "${fasta}*" into bwa_index
@@ -426,7 +426,7 @@ process bwa {
     input:
     file reads from trimmed_reads
     file index from bwa_index
-    file fasta from fasta
+    file fasta from fasta_file
 
     output:
     file '*.bam' into bwa_bam

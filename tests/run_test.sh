@@ -39,7 +39,7 @@ fi
 
 run_name="Test Docker ChIP-Seq Run: "$(date +%s)
 
-nf_cmd="nextflow run $script_path -resume -name \"$run_name\" -profile testing --fasta ${data_dir}/Drosophila_melanogaster/UCSC/dm6/Annotation/Genes/genes.gtf --bwa_index ${data_dir}/Drosophila_melanogaster/UCSC/dm6/Sequence/Bowtie2Index/ --geffective 0.99 --macsconfig ${data_dir}/macs.config.csv --reads \"${data_dir}/*_R{1,2}.fastq.gz\""
+nf_cmd="nextflow run $script_path -resume -name \"$run_name\" -profile testing --fasta ${data_dir}/Drosophila_melanogaster/UCSC/dm6/Sequence/WholeGenomeFasta/genome.fa --gtf ${data_dir}/Drosophila_melanogaster/UCSC/dm6/Annotation/Genes/genes.gtf --bwa_index ${data_dir}/Drosophila_melanogaster/UCSC/dm6/Sequence/BWAIndex --geffective 0.99 --macsconfig ${data_dir}/macs.config.csv --reads \"${data_dir}/*.fastq.gz\" --singleEnd"
 echo "Starting nextflow... Command:"
 echo $nf_cmd
 echo "--------------------------------------------------"
