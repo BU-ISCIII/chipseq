@@ -201,12 +201,13 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	rm /opt/SPP_${SPP_VERSION}.tar.gz && \
 	curl -fsSL https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/phantompeakqualtools/ccQualityControl.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz -o /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz && \
 	tar xvzf /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz -C /opt/ && \
-	chmod 755 /opt/phantompeakqualtools/* && \
-	echo 'alias run_spp.R="Rscript /opt/phantompeakqualtools/run_spp.R"' >> /etc/bashrc && \
-	rm /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz
+	rm /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz && \
+	mkdir /opt/phantompeakqualtools/bin && \
+	echo 'Rscript /opt/phantompeakqualtools/run_spp.R' > /opt/phantompeakqualtools/bin/run_spp.R && \
+	chmod 755 /opt/phantompeakqualtools/bin/run_spp.R
 
-	echo 'export PATH=${PATH}:/opt/phantompeakqualtools' >> $SINGULARITY_ENVIRONMENT
-	export PATH=${PATH}:/opt/phantompeakqualtools
+	export PATH=${PATH}:/opt/phantompeakqualtools/bin
+	echo 'export PATH=${PATH}:/opt/phantompeakqualtools/bin' >> $SINGULARITY_ENVIRONMENT
 
 	# Install DeepTools
 	echo "Install DeepTools"
