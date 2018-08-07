@@ -123,6 +123,8 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
+params.email="bioinformatica@isciii.es"
+
 // iGenome
 params.genome = false
 
@@ -151,6 +153,7 @@ if( params.gtf ){
 }
 
 // blacklist file
+params.blacklist_filtering = false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
 
 if ( params.blacklist_filtering ){
@@ -164,8 +167,10 @@ params.geffective = false
 // PeakCallers
 params.peakCaller = "macs"
 
-// KeepDuplicates
+// Mapping-duplicates defaults
 params.keepduplicates = false
+params.allow_multi_align = false
+params.notrim = false
 
 // Rlibrarylocation
 params.rlocation = false
@@ -177,10 +182,18 @@ if (params.rlocation){
 
 // Following two configured in config.file?
 // MultiQC config file
-multiqc_config = file(params.multiqc_config)
+params.multiqc_config = false
+
+if (params.multiqc_config){
+	multiqc_config = file(params.multiqc_config)
+}
 
 // Output md template location
 output_docs = file("$baseDir/docs/output.md")
+// Output files options
+params.saveReference = false
+params.saveTrimmed = false
+params.saveAlignedIntermediates = false
 
 // Default trimming options
 params.clip_r1 = 0
@@ -188,8 +201,13 @@ params.clip_r2 = 0
 params.three_prime_clip_r1 = 0
 params.three_prime_clip_r2 = 0
 
+// deepTools default Options
+params.extendReadsLen = 100
+
 // macsconfig file
 macsconfig = file(params.macsconfig)
+params.saturation = false
+params.broad = false
 
 // SingleEnd option
 params.singleEnd = false
@@ -213,11 +231,12 @@ def REF_macs = false
 def REF_ngsplot = false
 if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
 else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
+else if (params.genome == 'StrepPneumo1'){ REF_ngsplot = 'StrepPneumo1' }
 else if (params.fasta != false & params.geffective != false & params.gtf != false){
     REF_macs= params.geffective
     log.warn "NGSplot is only available for hg19 and mm10 genomes at the moment."
 } else {
-    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37 and GRCm38). Fasta file (--fasta), genome effective size (--geffective) and gtp annotation file (--gtf) must be supplied."
+    log.warn "Reference '${params.genome}' not supported by MACS, ngs_plot and annotation (only GRCh37, GRCm38 and StrepPneumo1). Fasta file (--fasta), genome effective size (--geffective) and gtp annotation file (--gtf) must be supplied."
 }
 
 /*
@@ -777,44 +796,45 @@ process ngsplot {
 /*
  * STEP 9.1 MACS
  */
+if (params.peakCaller =~ /(all|macs)/){
+	process macs {
+	tag "${bam_for_macs[0].baseName}"
+	publishDir "${params.outdir}/macs", mode: 'copy'
 
-process macs {
-    tag "${bam_for_macs[0].baseName}"
-    publishDir "${params.outdir}/macs", mode: 'copy'
+	input:
+	file bam_for_macs from bam_macs.collect()
+	file bai_for_macs from bai_macs.collect()
+	set chip_sample_id, ctrl_sample_id, analysis_id from macs_para
 
-    input:
-    file bam_for_macs from bam_macs.collect()
-    file bai_for_macs from bai_macs.collect()
-    set chip_sample_id, ctrl_sample_id, analysis_id from macs_para
+	output:
+	file '*.{bed,r,narrowPeak,broadPeak,gappedPeak}' into macs_results
+	file '*.xls' into macs_peaks
 
-    output:
-    file '*.{bed,r,narrowPeak,broadPeak,gappedPeak}' into macs_results
-    file '*.xls' into macs_peaks
+	when: REF_macs
 
-    when: REF_macs && params.peakCaller =~ "/(all|macs)/"
+	script:
+	def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
+	qvalue = params.qvalue
+	broad = params.broad ? "--broad" : ''
+	keepduplicates = params.keepduplicates ? '--keep-dup all' : ''
+	nomodel = params.macsnomodel ? '--nomodel' : ''
+	extsize = params.extsize ? "--extsize ${params.extsize}" : ''
 
-    script:
-    def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
-    broad = params.broad ? "--broad" : ''
-    keepduplicates = params.keepduplicates ? '--keep-dup all' : ''
-    nomodel = params.macsnomodel ? '--nomodel' : ''
-    extsize = params.extsize ? "--extsize ${params.extsize}" : ''
-
-    """
-    macs2 callpeak \\
-        -t ${chip_sample_id}.sorted.bam \\
-        $ctrl \\
-        $broad \\
-        $keepduplicates \\
-        -f BAM \\
-        -g $REF_macs \\
-        -n $analysis_id \\
-        -q $qvalue \\
-        $nomodel \\
-        $extsize
-    """
+	"""
+	macs2 callpeak \\
+		-t ${chip_sample_id}.sorted.bam \\
+		$ctrl \\
+		$broad \\
+		$keepduplicates \\
+		-f BAM \\
+		-g $REF_macs \\
+		-n $analysis_id \\
+		-q $qvalue \\
+		$nomodel \\
+		$extsize
+	"""
+	}
 }
-
 
 /*
  * STEP 9.2 Saturation analysis
