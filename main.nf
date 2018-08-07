@@ -114,7 +114,7 @@ if (params.help){
 params.name = false
 params.project = false
 
-if( workflow.profile == 'standard' && !params.project ) exit 1, "No UPPMAX project ID found! Use --project"
+//if( workflow.profile == 'standard' && !params.project ) exit 1, "No UPPMAX project ID found! Use --project"
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -329,9 +329,9 @@ if( workflow.profile == 'standard'){
 /*
  * PREPROCESSING - Build BWA index
  */
-if(!params.bwa_index && fasta){
+if(!params.bwa_index && fasta_file){
     process makeBWAindex {
-        tag fasta
+        tag fasta_file
         publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
                    saveAs: { params.saveReference ? it : null }, mode: 'copy'
 
@@ -598,8 +598,7 @@ process phantompeakqualtools {
     script:
     prefix = bam[0].toString() - ~/(\.dedup)?(\.sorted)?(\.bam)?$/
     """
-    SCRIPT_PATH=\$(which run_spp.R)
-    Rscript \$SCRIPT_PATH -c="$bam" -savp -out="${prefix}.spp.out"
+    run_spp.R -c="$bam" -savp -out="${prefix}.spp.out"
     """
 }
 
@@ -902,7 +901,7 @@ if (params.saturation) {
 /*
  * Parse software version numbers
  */
-process get_software_versions {
+/* process get_software_versions {
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
@@ -924,62 +923,62 @@ process get_software_versions {
     scrape_software_versions.py > software_versions_mqc.yaml
     """
 }
-
+*/
 
 /*
  * STEP 11 MultiQC
  */
 
-process multiqc {
-    tag "$prefix"
-    publishDir "${params.outdir}/MultiQC", mode: 'copy'
-
-    input:
-    file multiqc_config
-    file (fastqc:'fastqc/*') from fastqc_results.collect()
-    file ('trimgalore/*') from trimgalore_results.collect()
-    file ('samtools/*') from samtools_stats.collect()
-    file ('deeptools/*') from deepTools_multiqc.collect()
-    file ('phantompeakqualtools/*') from spp_out_mqc.collect()
-    file ('phantompeakqualtools/*') from calculateNSCRSC_results.collect()
-    file ('software_versions/*') from software_versions_yaml.collect()
-    /*file ('picard/*') from picard_reports.collect()*/
-
-    output:
-    file '*multiqc_report.html' into multiqc_report
-    file '*_data' into multiqc_data
-    file '.command.err' into multiqc_stderr
-    val prefix into multiqc_prefix
-
-    script:
-    prefix = fastqc[0].toString() - '_fastqc.html' - 'fastqc/'
-    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
-    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
-    """
-    multiqc -f $rtitle $rfilename --config $multiqc_config . 2>&1
-    """
-}
+//process multiqc {
+//    tag "$prefix"
+//    publishDir "${params.outdir}/MultiQC", mode: 'copy'
+//
+//    input:
+//    file multiqc_config
+//    file (fastqc:'fastqc/*') from fastqc_results.collect()
+//    file ('trimgalore/*') from trimgalore_results.collect()
+//    file ('samtools/*') from samtools_stats.collect()
+//    file ('deeptools/*') from deepTools_multiqc.collect()
+//    file ('phantompeakqualtools/*') from spp_out_mqc.collect()
+//    file ('phantompeakqualtools/*') from calculateNSCRSC_results.collect()
+//    file ('software_versions/*') from software_versions_yaml.collect()
+//    /*file ('picard/*') from picard_reports.collect()*/
+//
+//    output:
+//    file '*multiqc_report.html' into multiqc_report
+//    file '*_data' into multiqc_data
+//    file '.command.err' into multiqc_stderr
+//    val prefix into multiqc_prefix
+//
+//    script:
+//    prefix = fastqc[0].toString() - '_fastqc.html' - 'fastqc/'
+//    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+//    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+//    """
+//    multiqc -f $rtitle $rfilename --config $multiqc_config . 2>&1
+//    """
+//}
 
 /*
  * STEP 12 - Output Description HTML
  */
-process output_documentation {
-    tag "$prefix"
-    publishDir "${params.outdir}/Documentation", mode: 'copy'
-
-    input:
-    val prefix from multiqc_prefix
-    file output from output_docs
-
-    output:
-    file "results_description.html"
-
-    script:
-    def rlocation = params.rlocation ?: ''
-    """
-    markdown_to_html.r $output results_description.html $rlocation
-    """
-}
+//process output_documentation {
+//    tag "$prefix"
+//    publishDir "${params.outdir}/Documentation", mode: 'copy'
+//
+//    input:
+//    val prefix from multiqc_prefix
+//    file output from output_docs
+//
+//    output:
+//    file "results_description.html"
+//
+//    script:
+//    def rlocation = params.rlocation ?: ''
+//    """
+//    markdown_to_html.r $output results_description.html $rlocation
+//    """
+//}
 
 
 /*

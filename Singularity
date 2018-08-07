@@ -213,7 +213,7 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	tar xvzf /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz -C /opt/ && \
 	rm /opt/phantompeakqualtools.${PHANTOMPEAKQUALTOOLS_VERSION}.tar.gz && \
 	mkdir /opt/phantompeakqualtools/bin && \
-	echo 'Rscript /opt/phantompeakqualtools/run_spp.R' > /opt/phantompeakqualtools/bin/run_spp.R && \
+	echo 'Rscript /opt/phantompeakqualtools/run_spp.R \"\$@\"' > /opt/phantompeakqualtools/bin/run_spp.R && \
 	chmod 755 /opt/phantompeakqualtools/bin/run_spp.R
 
 	export PATH=${PATH}:/opt/phantompeakqualtools/bin
