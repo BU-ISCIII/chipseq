@@ -66,8 +66,10 @@ def helpMessage() {
       --blacklist_filtering         Filter ENCODE blacklisted regions from ChIP-seq peaks. It only works when --genome is set as GRCh37 or GRCm38
       --geffective					effective genome size. Mandatory when --fasta.
       --keepduplicates				Specifying --keepduplicates picardMarkDuplicates will be escaped, and --keepduplicates will be applied to peak callers as a parameter.
-      --qvalue						qvalue for peak output.
+      --qvalue						qvalue for peak output [default: false].
+      --pvalue						pvalue for peak output [default: 0.05].
       --macsnomodel					Specifying --macsnomodel macs will not use its internal model for peak calling.
+      --mfold						fold enrichment for peak calling in macs. default [5 50]
       --extsize [int]				Mandatory when specifying --macsnomodel, fragment size for abundance estimation.
 
     Presets:
@@ -163,6 +165,7 @@ if ( params.blacklist_filtering ){
 
 // genome effective size == % genome mappability
 params.geffective = false
+params.mfold = false
 
 // PeakCallers
 params.peakCaller = "macs"
@@ -182,7 +185,7 @@ if (params.rlocation){
 
 // Following two configured in config.file?
 // MultiQC config file
-params.multiqc_config = false
+params.multiqc_config = "${baseDir}/conf/multiqc_config.yaml"
 
 if (params.multiqc_config){
 	multiqc_config = file(params.multiqc_config)
@@ -213,13 +216,17 @@ params.broad = false
 params.singleEnd = false
 
 // qvalue
-params.qvalue = 0.01
+params.qvalue = false
+
+// pvalue
+params.pvalue = 0.05
 
 // Macs no model and extsize
 params.macsnomodel = false
-
+params.extsize = false
+extsize = params.extsize
 if (params.macsnomodel){
-	if (!extsize.exists()) exit 1, "Missing extsize, mandatory when macs --nomodel parameter is specified. Use --extsize."
+	if (!params.extsize) exit 1, "Missing extsize, mandatory when macs --nomodel parameter is specified. Use --extsize."
 }
 
 // Validate  mandatory inputs
@@ -475,8 +482,8 @@ process samtools {
     file bam from bwa_bam
 
     output:
-    file '*.sorted.bam' into bam_for_mapped, bam_spp, bam_ngsplot, bam_deepTools, bam_macs, bam_ded
-    file '*.sorted.bam.bai' into bwa_bai, bai_for_mapped, bai_deepTools, bai_ngsplot, bai_macs, bai_saturation
+    file '*.sorted.bam' into bam_for_mapped, bam_picard,bam_spp, bam_ngsplot, bam_deepTools, bam_macs, bam_ded
+    file '*.sorted.bam.bai' into bwa_bai, bai_picard,bai_for_mapped, bai_deepTools, bai_ngsplot, bai_macs, bai_saturation
     file '*.sorted.bed' into bed_total
     file '*.stats.txt' into samtools_stats
 
@@ -519,18 +526,7 @@ process bwa_mapped {
  */
 /* Comment duplicated reads removal*/
 
-if (params.keepduplicates){
-	bam_spp = bam_dedup_spp
-	bam_ngsplot = bam_dedup_ngsplot
-	bam_deepTools = bam_dedup_deepTools
-	bam_macs = bam_dedup_macs
-	bam_for_saturation = bam_dedup_saturation
-
-	bai_spp = bai_dedup_spp
-	bai_ngsplot = bai_dedup_ngsplot
-	bai_deepTools = bai_dedup_deepTools
-	bai_macs = bai_dedup_macs
-	bai_for_saturation = bai_dedup_saturation
+if (!params.keepduplicates){
 
 	process picard {
 		tag "$prefix"
@@ -541,7 +537,7 @@ if (params.keepduplicates){
 
 		output:
 		file '*.dedup.sorted.bam' into bam_dedup_spp, bam_dedup_ngsplot, bam_dedup_deepTools, bam_dedup_macs, bam_dedup_saturation
-		file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation
+		file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_spp, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation
 		file '*.dedup.sorted.bed' into bed_dedup
 		file '*.picardDupMetrics.txt' into picard_reports
 
@@ -575,6 +571,18 @@ if (params.keepduplicates){
 		bedtools bamtobed -i ${prefix}.dedup.sorted.bam | sort -k 1,1 -k 2,2n -k 3,3n -k 6,6 > ${prefix}.dedup.sorted.bed
 		"""
 	}
+	//Change variables to dedup variables
+	bam_spp = bam_dedup_spp
+	bam_ngsplot = bam_dedup_ngsplot
+	bam_deepTools = bam_dedup_deepTools
+	bam_macs = bam_dedup_macs
+	bam_for_saturation = bam_dedup_saturation
+
+	bai_spp = bai_dedup_spp
+	bai_ngsplot = bai_dedup_ngsplot
+	bai_deepTools = bai_dedup_deepTools
+	bai_macs = bai_dedup_macs
+	bai_for_saturation = bai_dedup_saturation
 }
 
 /*
@@ -800,6 +808,7 @@ if (params.peakCaller =~ /(all|macs)/){
 	process macs {
 	tag "${bam_for_macs[0].baseName}"
 	publishDir "${params.outdir}/macs", mode: 'copy'
+	container 'genomicpariscentre/macs2'
 
 	input:
 	file bam_for_macs from bam_macs.collect()
@@ -813,23 +822,33 @@ if (params.peakCaller =~ /(all|macs)/){
 	when: REF_macs
 
 	script:
-	def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
-	qvalue = params.qvalue
+	if (params.keepduplicates){
+		ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.sorted.bam"
+		chip = "${chip_sample_id}.sorted.bam"
+	}else{
+		ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.dedup.sorted.bam"
+		chip = "${chip_sample_id}.dedup.sorted.bam"
+	}
+	pvalue = params.pvalue ? "--pvalue ${params.pvalue}" : ''
 	broad = params.broad ? "--broad" : ''
 	keepduplicates = params.keepduplicates ? '--keep-dup all' : ''
 	nomodel = params.macsnomodel ? '--nomodel' : ''
 	extsize = params.extsize ? "--extsize ${params.extsize}" : ''
+	qvalue = params.qvalue ? "--qvalue ${params.qvalue}" : ''
+	mfold = params.mfold ? "-m ${params.mfold}" : ''
 
 	"""
 	macs2 callpeak \\
-		-t ${chip_sample_id}.sorted.bam \\
+		-t $chip \\
 		$ctrl \\
 		$broad \\
 		$keepduplicates \\
 		-f BAM \\
 		-g $REF_macs \\
 		-n $analysis_id \\
-		-q $qvalue \\
+		$qvalue \\
+		$mfold \\
+		$pvalue \\
 		$nomodel \\
 		$extsize
 	"""
@@ -868,7 +887,7 @@ if (params.saturation) {
          -f BAM \\
          -g $REF_macs \\
          -n ${analysis_id}.${sampling} \\
-         -q 0.01
+         -q $qvalue
      """
   }
 
@@ -921,7 +940,7 @@ if (params.saturation) {
 /*
  * Parse software version numbers
  */
-/* process get_software_versions {
+process get_software_versions {
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
@@ -943,67 +962,68 @@ if (params.saturation) {
     scrape_software_versions.py > software_versions_mqc.yaml
     """
 }
-*/
+
 
 /*
  * STEP 11 MultiQC
  */
 
-//process multiqc {
-//    tag "$prefix"
-//    publishDir "${params.outdir}/MultiQC", mode: 'copy'
-//
-//    input:
-//    file multiqc_config
-//    file (fastqc:'fastqc/*') from fastqc_results.collect()
-//    file ('trimgalore/*') from trimgalore_results.collect()
-//    file ('samtools/*') from samtools_stats.collect()
-//    file ('deeptools/*') from deepTools_multiqc.collect()
-//    file ('phantompeakqualtools/*') from spp_out_mqc.collect()
-//    file ('phantompeakqualtools/*') from calculateNSCRSC_results.collect()
-//    file ('software_versions/*') from software_versions_yaml.collect()
-//    /*file ('picard/*') from picard_reports.collect()*/
-//
-//    output:
-//    file '*multiqc_report.html' into multiqc_report
-//    file '*_data' into multiqc_data
-//    file '.command.err' into multiqc_stderr
-//    val prefix into multiqc_prefix
-//
-//    script:
-//    prefix = fastqc[0].toString() - '_fastqc.html' - 'fastqc/'
-//    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
-//    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
-//    """
-//    multiqc -f $rtitle $rfilename --config $multiqc_config . 2>&1
-//    """
-//}
+process multiqc {
+    tag "$prefix"
+    publishDir "${params.outdir}/MultiQC", mode: 'copy'
+
+    input:
+    file multiqc_config
+    file (fastqc:'fastqc/*') from fastqc_results.collect()
+    file ('trimgalore/*') from trimgalore_results.collect()
+    file ('samtools/*') from samtools_stats.collect()
+    file ('deeptools/*') from deepTools_multiqc.collect()
+    file ('phantompeakqualtools/*') from spp_out_mqc.collect()
+    file ('phantompeakqualtools/*') from calculateNSCRSC_results.collect()
+    file ('software_versions/*') from software_versions_yaml.collect()
+    /*file ('picard/*') from picard_reports.collect()*/
+
+    output:
+    file '*multiqc_report.html' into multiqc_report
+    file '*_data' into multiqc_data
+    file '.command.err' into multiqc_stderr
+    val prefix into multiqc_prefix
+
+    script:
+    prefix = fastqc[0].toString() - '_fastqc.html' - 'fastqc/'
+    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+    """
+    multiqc -f $rtitle $rfilename --config $multiqc_config . 2>&1
+    """
+}
 
 /*
  * STEP 12 - Output Description HTML
  */
-//process output_documentation {
-//    tag "$prefix"
-//    publishDir "${params.outdir}/Documentation", mode: 'copy'
-//
-//    input:
-//    val prefix from multiqc_prefix
-//    file output from output_docs
-//
-//    output:
-//    file "results_description.html"
-//
-//    script:
-//    def rlocation = params.rlocation ?: ''
-//    """
-//    markdown_to_html.r $output results_description.html $rlocation
-//    """
-//}
+process output_documentation {
+    tag "$prefix"
+    publishDir "${params.outdir}/Documentation", mode: 'copy'
+
+    input:
+    val prefix from multiqc_prefix
+    file output from output_docs
+
+    output:
+    file "results_description.html"
+
+    script:
+    def rlocation = params.rlocation ?: ''
+    """
+    markdown_to_html.r $output results_description.html $rlocation
+    """
+}
 
 
 /*
  * Completion e-mail notification
  */
+
 workflow.onComplete {
 
     // Set up the e-mail variables
