@@ -106,6 +106,9 @@ ngsplotdb_StrepPneumo1_40_3.00.tar.gz /opt
 	yum -y install python-setuptools
 	easy_install pip
 
+	echo 'export LC_ALL=en_GB.utf-8' >> $SINGULARITY_ENVIRONMENT
+	echo 'export LANG=en_GB.utf-8' >> $SINGULARITY_ENVIRONMENT
+
 	echo "Install java"
 	yum -y install java-1.8.0-openjdk.x86_64
 
