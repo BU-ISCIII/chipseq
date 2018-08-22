@@ -1012,7 +1012,7 @@ process uropa {
 
     """
 	sed 's/##GTF##/$gtf/' $uropa_config | sed 's/##BED##/bed_formatted/'> $prefix"_fill.json"
-	grep -Pv "(^#|^chr\t|^Chromosome\t)" $peaks_collection | tr ' ' '\t' > bed_formatted
+	grep -Pv "(^#|^chr\t|^Chromosome)" $peaks_collection | tr ' ' '\t' > bed_formatted
 	uropa -i $prefix"_fill.json" -p $prefix
     """
 }
