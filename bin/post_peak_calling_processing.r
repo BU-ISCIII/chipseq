@@ -3,35 +3,16 @@
 # R scripts for processing MACS output files (.xls)
 # Author @chuan-wang https://github.com/chuan-wang
 
+library("GenomicRanges")
+library("ChIPpeakAnno")
+library("rtracklayer")
+
 # Command line arguments
 args <- commandArgs(trailingOnly=TRUE)
 
-R_lib <- as.character(args[1])
-ref <- as.character(args[2])
 Blacklist <- as.character(args[3])
 GTF <- as.character(args[4])
 input <- as.character(args[5:length(args)])
-
-# Load / install required packages
-.libPaths( c( R_lib, .libPaths() ) )
-
-if (!require("GenomicRanges")){
-    source("http://bioconductor.org/biocLite.R")
-    biocLite("GenomicRanges", suppressUpdates=TRUE)
-    library("GenomicRanges")
-}
-
-if (!require("ChIPpeakAnno")){
-    source("http://bioconductor.org/biocLite.R")
-    biocLite("ChIPpeakAnno", suppressUpdates=TRUE)
-    library("ChIPpeakAnno")
-}
-
-if (!require("rtracklayer")){
-    source("http://bioconductor.org/biocLite.R")
-    biocLite("rtracklayer", suppressUpdates=TRUE)
-    library("rtracklayer")
-}
 
 # Process annotation file
 gtf<-import(GTF)
@@ -61,7 +42,7 @@ if (Blacklist!="No-filtering") {
 
 # Process output files from MACS: filtering peaks that overlap with blacklisted regions and annotating peaks
 for (i in 1:length(input)) {
-	
+
 	# Avoid error that result file with 0 peak identified
 	if(class(try(read.table(input[i],header=TRUE),silent=TRUE))=="try-error"){
 		next
@@ -79,12 +60,12 @@ for (i in 1:length(input)) {
     	    final<-data_range
     	    filter_flag<-""
         }
-    
+
         # Write peaks to txt and bed files
         final_df<-as.data.frame(final)
         newfilename<-paste(sub("_peaks.xls","",basename(input[i])),filter_flag,".txt",sep="")
         write.table(final_df,file=newfilename,quote=FALSE,sep="\t",eol="\n")
-    
+
         df<-data.frame(seqnames=seqnames(final),starts=start(final)-1,ends=end(final),names=c(rep(".",length(final))),scores=c(rep(".",length(final))),strands=strand(final))
         newfilename<-paste(sub("_peaks.xls","",basename(input[i])),filter_flag,".bed",sep="")
         write.table(df, file=newfilename, quote=F, sep="\t", row.names=F, col.names=F)

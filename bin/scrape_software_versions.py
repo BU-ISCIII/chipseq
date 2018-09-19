@@ -15,6 +15,7 @@ regexes = {
     'deepTools': ['v_deeptools.txt', r"plotFingerprint (\S+)"],
     'NGSplot': ['v_ngsplot.txt', r"Version: (\S+)"],
     'MACS2': ['v_macs2.txt', r"macs2 (\S+)"],
+    'epic' : ['v_epic.txt', r"epic (\S+)"],
     'MultiQC': ['v_multiqc.txt', r"multiqc, version (\S+)"],
 }
 results = OrderedDict()
@@ -29,6 +30,7 @@ results['Picard'] = '<span style="color:#999999;\">N/A</span>'
 results['deepTools'] = '<span style="color:#999999;\">N/A</span>'
 results['NGSplot'] = '<span style="color:#999999;\">N/A</span>'
 results['MACS2'] = '<span style="color:#999999;\">N/A</span>'
+results['epic'] = '<span style="color:#999999;\">N/A</span>'
 results['MultiQC'] = '<span style="color:#999999;\">N/A</span>'
 
 # Search each file using its regex

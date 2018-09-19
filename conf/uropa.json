@@ -1,0 +1,10 @@
+{
+"queries":[
+    {"feature":"",    "feature.anchor": "",    "distance":"",    "strand":"",
+            "direction":"",    "internals":"",     "filter.attribute":"",
+            "attribute.value":"",     "show.attributes":["gene_id","gene_name","transcript_id","p_id"] }
+          ],
+"priority": "False",
+"gtf": "##GTF##",
+"bed": "##BED##"
+}
