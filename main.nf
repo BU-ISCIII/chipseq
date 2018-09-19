@@ -56,7 +56,7 @@ def helpMessage() {
       --blacklist                   Path to blacklist regions (.BED format), used for filtering out called peaks. Note that --blacklist_filtering is required
 
 	PeakCallers available:
-	  --peakCaller [str]			Select which peak caller to use. Options: (all|macs|epic|music). Default:macs
+	  --peakCaller [str]			Select which peak caller to use. Options: (all|macs|epic). Default:macs
 
     Options:
       --singleEnd                   Specifies that the input is single end reads
@@ -984,8 +984,18 @@ if (params.peakCaller =~ /(all|epic)/){
 }
 
 // Mix peak files into one channel
-macs_peaks.mix(epic_peaks)
-		  .set { peaks_all }
+if (params.peakCaller =~ /all/){
+	macs_peaks.mix(epic_peaks)
+			.set { peaks_all }
+}
+
+if (params.peakCaller =~ /macs/){
+	peaks_all = macs_peaks
+}
+
+if (params.peakCaller =~ /epic/){
+	peaks_all = epic_peaks
+}
 
 
 /*
@@ -1046,6 +1056,7 @@ process get_software_versions {
 }
 
 
+ if (!params.keepduplicates) {  Channel.empty().set { picard_reports } }
 
 /*
  * STEP 11 MultiQC
@@ -1061,10 +1072,10 @@ process multiqc {
     file ('trimgalore/*') from trimgalore_results.collect()
     file ('samtools/*') from samtools_stats.collect()
     file ('deeptools/*') from deepTools_multiqc.collect()
+    file ('picard/*') from picard_reports.collect()
     file ('phantompeakqualtools/*') from spp_out_mqc.collect()
     file ('phantompeakqualtools/*') from calculateNSCRSC_results.collect()
     file ('software_versions/*') from software_versions_yaml.collect()
-    //if (!params.keepduplicates) { file ('picard/*') from picard_reports.collect() }
 
     output:
     file '*multiqc_report.html' into multiqc_report
