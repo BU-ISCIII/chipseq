@@ -1,3 +1,4 @@
+## Nextflow files
 .nextflow*
 work/
 data/
@@ -6,3 +7,6 @@ results/
 tests/test_data
 trace.txt*
 timeline.html*
+## Images
+*.img
+*.simg
