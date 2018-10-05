@@ -1056,7 +1056,7 @@ process get_software_versions {
 }
 
 
- if (!params.keepduplicates) {  Channel.empty().set { picard_reports } }
+ if (params.keepduplicates) {  Channel.empty().set { picard_reports } }
 
 /*
  * STEP 11 MultiQC
