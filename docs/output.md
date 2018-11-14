@@ -1,6 +1,6 @@
-# nf-core/ChIPseq Output
+# BU-ISCIII/chipseq-nf Output
 
-**nf-core/ChIPseq** is a bioinformatics best-practice analysis pipeline used for ChIP-seq (chromatin immunoprecipitation sequencing) data analysis at the [National Genomics Infastructure](https://ngisweden.scilifelab.se/) at [SciLifeLab Stockholm](https://www.scilifelab.se/platforms/ngi/), Sweden.
+**BU-ISCIII/chipseq-nf** is a bioinformatics best-practice analysis pipeline used for ChIP-seq (chromatin immunoprecipitation sequencing) data analysis originally developed at the [National Genomics Infastructure](https://ngisweden.scilifelab.se/) at [SciLifeLab Stockholm](https://www.scilifelab.se/platforms/ngi/), Sweden. The pipeline has been adapted for BU-ISCIII needs, focusing in allowing custom references and parameter for it use with microbial sequencing data.
 
 This document describes the output produced by the pipeline.
 
@@ -18,6 +18,7 @@ and processes data using the following steps:
 * [deepTools](#deeptools) - fingerprint and correlation plots of reads over genome-wide bins
 * [NGSplot](#ngsplot) - distribution of reads around transcription start sites (TSS) and gene bodies
 * [MACS](#macs) - peak calling
+* [Epic](#epic) - broad peak calling
 * [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
 
 ## FastQC
@@ -171,6 +172,22 @@ Spearman correlation coefficient in each square is calculated with the read coun
   * bedGraph format files which can be imported to UCSC genome browser or be converted into even smaller bigWig files.
 
 *Refer to https://github.com/taoliu/MACS for the specifications of the output fields.*
+## Epic
+[epic](https://github.com/biocore-ntnu/epic) is a software package for finding medium to diffusely enriched domains in chip-seq data. It is a fast, parallel and memory-efficient implementation of the incredibly popular SICER algorithm. By running epic on a set of data ("ChIP") files and control ("Input") files, epic is able to quickly differentially enriched regions.
+
+**Output directory:** `results/epic`
+
+* `${sample_name}_diffusePeakCalling.txt`
+ * Tabular file which contains information about called peaks. Information include:
+  * Chromosome 
+  * Start
+  * End
+  * ChIP
+  * Input
+  * Score
+  * Log2FC
+  * P
+  * FDR
 
 ## MultiQC
 [MultiQC](http://multiqc.info) is a visualisation tool that generates a single HTML report summarising all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in within the report data directory.
