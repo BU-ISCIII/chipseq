@@ -178,16 +178,16 @@ Spearman correlation coefficient in each square is calculated with the read coun
 **Output directory:** `results/epic`
 
 * `${sample_name}_diffusePeakCalling.txt`
- * Tabular file which contains information about called peaks. Information include:
-  * Chromosome 
-  * Start
-  * End
-  * ChIP
-  * Input
-  * Score
-  * Log2FC
-  * P
-  * FDR
+    * Tabular file which contains information about called peaks. Information include:
+        * Chromosome 
+        * Start
+        * End
+        * ChIP
+        * Input
+        * Score
+        * Log2FC
+        * P
+        * FDR
 
 ## MultiQC
 [MultiQC](http://multiqc.info) is a visualisation tool that generates a single HTML report summarising all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in within the report data directory.
