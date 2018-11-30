@@ -177,7 +177,7 @@ Spearman correlation coefficient in each square is calculated with the read coun
 
 **Output directory:** `results/epic`
 
-* `${sample_name}_diffusePeakCalling.txt`
+* `sample_diffusePeakCalling.txt`
     * Tabular file which contains information about called peaks. Information include:
         * Chromosome 
         * Start
@@ -188,6 +188,25 @@ Spearman correlation coefficient in each square is calculated with the read coun
         * Log2FC
         * P
         * FDR
+
+## Uropa
+[Uropa](https://uropa-manual.readthedocs.io/) is a command line based tool intended for genomic region annotation. This tools is used for peak annotation. 
+
+**Output directory:** `results/{peak_caller}/chippeakanno/`
+
+* `sample_peaks_allhits.txt`
+    * Tabular file which contains annotated peaks. Information includes:
+        * **peak_id, peak_start, peak_center, peak_end, peak_strand:** Peak information with id if available, otherwise a peak id in chr:start-end format will be created.
+        * **feature, feat_start, feat_end, feat_strand:** The information of the genomic feature that annotates the peak as extracted by the GTF file.
+        * **feat_anchor:** The position of the annotated genomic feature which was used for distance calculation. If feature.anchor is given in config, only this will be used. If multiple feature.anchor were given, the distance to all of them is calculated and the minimum distance is chosen.
+        * **distance:** Absolute distance from peak center to feature anchor. Closest feature anchor if multiple are specified, see column feat_anchor.
+        * **genomic_location:** The position of the peak relative to the annotated feature direction (e.g. upstream = peak located upstream of the feature, see Figure 2 in Application examples).
+        * **feat_ovl_peak:** Percentage of the peak that is covered by the feature (1.0 = 100%, this corresponds to the genomic_location “PeakInsideFeature”).
+        * **peak_ovl_feat:** Percentage of the feature that is covered by the peak (1.0 corresponds to the genomic_location “FeatureInsidePeak”).
+        * **gene_name, gene_id, gene_type,…:** Attributes that have been given in the key show.atttributes with their values extracted from the GTF.
+
+* `sample_peaks_finalhits.txt`
+    * Tabular file with final annotation information. Same columns than previous file.
 
 ## MultiQC
 [MultiQC](http://multiqc.info) is a visualisation tool that generates a single HTML report summarising all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in within the report data directory.
