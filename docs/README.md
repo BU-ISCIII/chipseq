@@ -1,6 +1,6 @@
-# nf-core/ChIPseq Results
+# BU-ISCIII/ChIPseq Results
 
-The nf-core/ChIPseq documentation is split into a few different files:
+The BU-ISCIII/ChIPseq documentation is split into a few different files:
 
 * [`installation.md`](installation.md)
   * Pipeline installation and configuration instructions
